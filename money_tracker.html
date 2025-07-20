@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geld Tracker</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23000000'/%3E%3Cpath d='M15 70h12v15H15z' fill='%23ffffff'/%3E%3Cpath d='M32 60h12v25H32z' fill='%23ffffff'/%3E%3Cpath d='M49 50h12v35H49z' fill='%23ffffff'/%3E%3Cpath d='M66 35h12v50H66z' fill='%23ffffff'/%3E%3Cpath d='M20 45L30 35L40 42L50 32L60 25L70 20L78 15' stroke='%23ffffff' stroke-width='4' fill='none'/%3E%3Cpath d='M70 15L78 15L78 23' stroke='%23ffffff' stroke-width='4' fill='none'/%3E%3C/svg%3E">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://unpkg.com/dropbox/dist/Dropbox-sdk.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-weight: 300;
+            font-size: 2.5em;
+            letter-spacing: 2px;
+        }
+
+        .input-section {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(5px);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        input[type="number"] {
+            flex: 1;
+            min-width: 200px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: #ffffff;
+            font-size: 16px;
+            backdrop-filter: blur(5px);
+            transition: all 0.3s ease;
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.4);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        input[type="number"]::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .btn {
+            padding: 15px 25px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: #ffffff;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .current-balance {
+            text-align: center;
+            margin: 20px 0;
+            font-size: 2em;
+            font-weight: 300;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            backdrop-filter: blur(5px);
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            margin: 30px 0;
+            backdrop-filter: blur(5px);
+            height: 400px;
+            position: relative;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .chart-title {
+            font-size: 1.2em;
+            font-weight: 300;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .chart-filter {
+            position: relative;
+        }
+
+        .filter-dropdown {
+            padding: 8px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 14px;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            transition: all 0.3s ease;
+            min-width: 150px;
+        }
+
+        .filter-dropdown:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .filter-dropdown:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .chart-canvas-container {
+            height: 320px;
+        }
+
+        .data-section {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 30px;
+            backdrop-filter: blur(5px);
+        }
+
+        .data-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-input-label {
+            padding: 15px 25px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: #ffffff;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+            display: inline-block;
+        }
+
+        .file-input-label:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .history {
+            max-height: 300px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .amount-positive {
+            color: #ffffff;
+        }
+
+        .amount-negative {
+            color: #cccccc;
+        }
+
+        .clear-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+        }
+
+        .clear-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>GELD TRACKER</h1>
+        
+        <div class="input-section">
+            <div class="input-group">
+                <input type="number" id="amountInput" placeholder="Bedrag invoeren..." step="0.01">
+                <button class="btn" onclick="addAmount()">Toevoegen</button>
+                <button class="btn" onclick="setAmount()">Instellen</button>
+            </div>
+        </div>
+
+        <div class="current-balance">
+            Huidig saldo: €<span id="currentBalance">0.00</span>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-header">
+                <div class="chart-title">Saldo Ontwikkeling</div>
+                <div class="chart-filter">
+                    <select class="filter-dropdown" id="timeFilter" onchange="updateChart()">
+                        <option value="all">Alles</option>
+                        <option value="week">Deze week (7 dagen)</option>
+                        <option value="month">Deze maand (30 dagen)</option>
+                        <option value="6months">6 maanden</option>
+                        <option value="year">Afgelopen jaar</option>
+                    </select>
+                </div>
+            </div>
+            <div class="chart-canvas-container">
+                <canvas id="moneyChart"></canvas>
+            </div>
+        </div>
+
+        <div class="data-section">
+            <div class="history" id="history">
+                <div style="text-align: center; color: rgba(255, 255, 255, 0.5);">Geen gegevens</div>
+            </div>
+            
+            <div class="data-controls">
+                <button class="btn" onclick="exportData()">Exporteren (JSON)</button>
+                <label for="fileInput" class="file-input-label">Importeren (JSON)</label>
+                <input type="file" id="fileInput" accept=".json" onchange="importData()">
+                <button class="btn" id="dropboxBtn" onclick="toggleDropbox()">Dropbox verbinden</button>
+                <button class="btn clear-btn" onclick="clearData()">Alles wissen</button>
+            </div>
+            
+            <div class="backup-info" id="backupInfo" style="margin: 15px 0; padding: 10px; background: rgba(255, 255, 255, 0.05); border-radius: 8px; font-size: 14px;">
+                <div>Automatische backup: <span id="autoBackupStatus">Uitgeschakeld</span></div>
+                <div>Laatste backup: <span id="lastBackup">Nooit</span></div>
+                <button class="btn" style="margin-top: 10px; padding: 8px 15px; font-size: 14px;" onclick="toggleAutoBackup()">Auto-backup aan/uit</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let data = JSON.parse(localStorage.getItem('moneyData')) || [];
+        let chart;
+        let autoBackupEnabled = localStorage.getItem('autoBackup') === 'true';
+        let dropboxConnected = false;
+        let dbx = null;
+
+        // Dropbox App Key - Je moet dit vervangen door je eigen App Key
+        const DROPBOX_APP_KEY = 'YOUR_DROPBOX_APP_KEY';
+
+        function initDropbox() {
+            if (DROPBOX_APP_KEY !== 'YOUR_DROPBOX_APP_KEY') {
+                dbx = new Dropbox.Dropbox({ 
+                    clientId: DROPBOX_APP_KEY,
+                    fetch: fetch
+                });
+                
+                // Check if we have a stored access token
+                const accessToken = localStorage.getItem('dropboxToken');
+                if (accessToken) {
+                    dbx.setAccessToken(accessToken);
+                    dropboxConnected = true;
+                    updateDropboxButton();
+                    loadFromDropbox();
+                }
+            }
+        }
+
+        function toggleDropbox() {
+            if (!dbx) {
+                alert('Dropbox functionaliteit is niet geconfigureerd. Vervang YOUR_DROPBOX_APP_KEY door je echte Dropbox App Key.');
+                return;
+            }
+
+            if (dropboxConnected) {
+                // Disconnect
+                localStorage.removeItem('dropboxToken');
+                dropboxConnected = false;
+                dbx.setAccessToken('');
+                updateDropboxButton();
+                alert('Dropbox verbinding verbroken');
+            } else {
+                // Connect - redirect to Dropbox OAuth
+                const authUrl = dbx.getAuthenticationUrl(window.location.origin + window.location.pathname);
+                window.location.href = authUrl;
+            }
+        }
+
+        function updateDropboxButton() {
+            const btn = document.getElementById('dropboxBtn');
+            btn.textContent = dropboxConnected ? 'Dropbox verbonden ✓' : 'Dropbox verbinden';
+            btn.style.background = dropboxConnected ? 'rgba(0, 255, 0, 0.2)' : 'rgba(255, 255, 255, 0.1)';
+        }
+
+        function saveToDropbox() {
+            if (!dropboxConnected || !dbx) return;
+            
+            const dataStr = JSON.stringify(data, null, 2);
+            const fileName = '/geld-tracker-backup.json';
+            
+            dbx.filesUpload({
+                path: fileName,
+                contents: dataStr,
+                mode: 'overwrite',
+                autorename: true
+            }).then(() => {
+                console.log('Data opgeslagen in Dropbox');
+            }).catch((error) => {
+                console.error('Dropbox upload error:', error);
+            });
+        }
+
+        function loadFromDropbox() {
+            if (!dropboxConnected || !dbx) return;
+            
+            dbx.filesDownload({path: '/geld-tracker-backup.json'})
+                .then((response) => {
+                    const reader = new FileReader();
+                    reader.onload = function() {
+                        try {
+                            const cloudData = JSON.parse(reader.result);
+                            if (Array.isArray(cloudData) && cloudData.length > data.length) {
+                                data = cloudData;
+                                updateDisplay();
+                                console.log('Data geladen van Dropbox');
+                            }
+                        } catch (error) {
+                            console.error('Error parsing Dropbox data:', error);
+                        }
+                    };
+                    reader.readAsText(response.result.fileBinary);
+                })
+                .catch(() => {
+                    console.log('Geen backup gevonden in Dropbox');
+                });
+        }
+
+        function handleOAuthCallback() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            
+            if (code && dbx) {
+                dbx.getAccessTokenFromCode(window.location.origin + window.location.pathname, code)
+                    .then((response) => {
+                        localStorage.setItem('dropboxToken', response.result.access_token);
+                        dbx.setAccessToken(response.result.access_token);
+                        dropboxConnected = true;
+                        updateDropboxButton();
+                        
+                        // Clean URL
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                        
+                        alert('Dropbox succesvol verbonden!');
+                        loadFromDropbox();
+                    })
+                    .catch((error) => {
+                        console.error('OAuth error:', error);
+                        alert('Fout bij Dropbox verbinding');
+                    });
+            }
+        }
+
+        function toggleAutoBackup() {
+            autoBackupEnabled = !autoBackupEnabled;
+            localStorage.setItem('autoBackup', autoBackupEnabled.toString());
+            updateBackupInfo();
+            
+            if (autoBackupEnabled) {
+                createAutoBackup();
+            }
+        }
+
+        function createAutoBackup() {
+            if (!autoBackupEnabled) return;
+            
+            const dataStr = JSON.stringify(data, null, 2);
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const filename = `geld-backup-${timestamp}.json`;
+            
+            // Create and download backup file
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            localStorage.setItem('lastBackup', new Date().toLocaleString('nl-NL'));
+            updateBackupInfo();
+        }
+
+        function updateBackupInfo() {
+            document.getElementById('autoBackupStatus').textContent = autoBackupEnabled ? 'Ingeschakeld' : 'Uitgeschakeld';
+            const lastBackup = localStorage.getItem('lastBackup') || 'Nooit';
+            document.getElementById('lastBackup').textContent = lastBackup;
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('moneyChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Saldo',
+                        data: [],
+                        borderColor: 'rgba(255, 255, 255, 0.8)',
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: 'rgba(255, 255, 255, 0.8)',
+                        pointBorderColor: 'rgba(255, 255, 255, 1)',
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: 'rgba(255, 255, 255, 0.8)'
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.8)',
+                                callback: function(value) {
+                                    return '€' + value.toFixed(2);
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.8)'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateDisplay() {
+            const currentBalance = data.length > 0 ? data[data.length - 1].balance : 0;
+            document.getElementById('currentBalance').textContent = currentBalance.toFixed(2);
+            
+            updateChart();
+            updateHistory();
+            saveData();
+            
+            // Auto backup after changes
+            if (autoBackupEnabled && data.length > 0) {
+                createAutoBackup();
+            }
+            
+            // Save to Dropbox if connected
+            if (dropboxConnected) {
+                saveToDropbox();
+            }
+        }
+
+        function getFilteredData() {
+            const filter = document.getElementById('timeFilter').value;
+            const now = new Date();
+            let cutoffDate;
+
+            switch (filter) {
+                case 'week':
+                    cutoffDate = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+                    break;
+                case 'month':
+                    cutoffDate = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+                    break;
+                case '6months':
+                    cutoffDate = new Date(now.getTime() - (6 * 30 * 24 * 60 * 60 * 1000));
+                    break;
+                case 'year':
+                    cutoffDate = new Date(now.getTime() - (365 * 24 * 60 * 60 * 1000));
+                    break;
+                default:
+                    return data;
+            }
+
+            return data.filter(item => new Date(item.date) >= cutoffDate);
+        }
+
+        function updateChart() {
+            const filteredData = getFilteredData();
+            const labels = filteredData.map(item => {
+                const date = new Date(item.date);
+                const filter = document.getElementById('timeFilter').value;
+                
+                // Format date based on filter
+                if (filter === 'week') {
+                    return date.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' });
+                } else if (filter === 'month') {
+                    return date.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
+                } else {
+                    return date.toLocaleDateString('nl-NL');
+                }
+            });
+            const balances = filteredData.map(item => item.balance);
+            
+            chart.data.labels = labels;
+            chart.data.datasets[0].data = balances;
+            chart.update();
+        }
+
+        function updateHistory() {
+            const historyDiv = document.getElementById('history');
+            
+            if (data.length === 0) {
+                historyDiv.innerHTML = '<div style="text-align: center; color: rgba(255, 255, 255, 0.5);">Geen gegevens</div>';
+                return;
+            }
+            
+            historyDiv.innerHTML = data.slice(-20).reverse().map(item => {
+                const date = new Date(item.date).toLocaleString('nl-NL');
+                const amountClass = item.amount >= 0 ? 'amount-positive' : 'amount-negative';
+                const amountText = item.amount >= 0 ? `+€${item.amount.toFixed(2)}` : `€${item.amount.toFixed(2)}`;
+                
+                return `
+                    <div class="history-item">
+                        <span>${date}</span>
+                        <span class="${amountClass}">${amountText}</span>
+                        <span>€${item.balance.toFixed(2)}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function addAmount() {
+            const input = document.getElementById('amountInput');
+            const amount = parseFloat(input.value);
+            
+            if (isNaN(amount)) {
+                alert('Voer een geldig bedrag in');
+                return;
+            }
+            
+            const currentBalance = data.length > 0 ? data[data.length - 1].balance : 0;
+            const newBalance = currentBalance + amount;
+            
+            data.push({
+                date: new Date().toISOString(),
+                amount: amount,
+                balance: newBalance
+            });
+            
+            input.value = '';
+            updateDisplay();
+        }
+
+        function setAmount() {
+            const input = document.getElementById('amountInput');
+            const amount = parseFloat(input.value);
+            
+            if (isNaN(amount)) {
+                alert('Voer een geldig bedrag in');
+                return;
+            }
+            
+            const currentBalance = data.length > 0 ? data[data.length - 1].balance : 0;
+            const difference = amount - currentBalance;
+            
+            data.push({
+                date: new Date().toISOString(),
+                amount: difference,
+                balance: amount
+            });
+            
+            input.value = '';
+            updateDisplay();
+        }
+
+        function exportData() {
+            const dataStr = JSON.stringify(data, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `geld-data-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function importData() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    
+                    if (Array.isArray(importedData)) {
+                        data = importedData;
+                        updateDisplay();
+                        alert('Gegevens succesvol geïmporteerd');
+                    } else {
+                        alert('Ongeldig bestandsformaat');
+                    }
+                } catch (error) {
+                    alert('Fout bij het lezen van het bestand');
+                }
+            };
+            reader.readAsText(file);
+            fileInput.value = '';
+        }
+
+        function clearData() {
+            if (confirm('Weet je zeker dat je alle gegevens wilt wissen?')) {
+                data = [];
+                updateDisplay();
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem('moneyData', JSON.stringify(data));
+        }
+
+        // Initialisatie
+        document.addEventListener('DOMContentLoaded', function() {
+            initChart();
+            initDropbox();
+            updateDisplay();
+            updateBackupInfo();
+            updateDropboxButton();
+            
+            // Handle OAuth callback
+            handleOAuthCallback();
+            
+            // Enter key support
+            document.getElementById('amountInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    addAmount();
+                }
+            });
+            
+            // Load from Dropbox on startup if connected
+            if (dropboxConnected) {
+                setTimeout(loadFromDropbox, 1000);
+            }
+        });
+    </script>
+</body>
+</html>
